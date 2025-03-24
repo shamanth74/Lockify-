@@ -28,8 +28,16 @@ export async function POST(req: NextRequest) {
 
     const user = new Users({ email, password: hashedPassword, masterPassword: hashedMasterPassword });
     await user.save();
-    const token=generateToken(user._id.toString())
-    return NextResponse.json({ message: 'User registered successfully',token }, { status: 201 });
+    const token=generateToken(user._id.toString());
+    
+    const response= NextResponse.json({ message: 'User registered successfully',token }, { status: 201 });
+    response.cookies.set('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production', // Secure in production
+      sameSite: 'strict',
+      maxAge: 60 * 60 * 24, // 1 day
+    });
+    return response;
   } 
   catch (error) {
     if (error instanceof z.ZodError) {

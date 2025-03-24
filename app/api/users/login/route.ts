@@ -18,7 +18,14 @@ export async function POST(req:NextRequest){
             return NextResponse.json({ message: 'Invalid password' }, { status: 401 });
         }
         const token=generateToken(user._id.toString())
-        return NextResponse.json({ message: 'Login successful',token });
+        const response= NextResponse.json({ message: 'Login successfull',token }, { status: 201 });
+    response.cookies.set('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production', // Secure in production
+      sameSite: 'strict',
+      maxAge: 60 * 60 * 24, 
+    });
+    return response;
     }
     catch(err){
         return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
