@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import Users from '@/models/Users';
 import { connectDb } from '@/lib/mongo';
 import { z } from 'zod';
-import { generateToken } from '@/lib/jwt';
+import { generateToken } from '@/utils/jwt';
 
 const UserSchema = z.object({
   email: z.string().email({ message: 'Invalid email format' }),
