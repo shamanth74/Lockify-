@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { motion, useMotionValue, useTransform } from 'framer-motion';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import Link from 'next/link';
 
 export default function Signup() {
   const [email, setEmail] = useState('');
@@ -59,7 +60,7 @@ export default function Signup() {
             transition={{ duration: 0.4 }}
           >
             <CardTitle className="text-4xl font-extrabold text-center text-purple-700 tracking-wide">
-              Lokify Signup
+              Lokify SignUp
             </CardTitle>
             <CardDescription className="text-center text-gray-500 mt-2">
               Secure your digital world with Lokify.
@@ -171,6 +172,7 @@ export default function Signup() {
                 )}
               </Button>
             </motion.div>
+            Already have an account?<Link href={'/login'}> Click Here to Login</Link>
           </form>
         </CardContent>
       </Card>

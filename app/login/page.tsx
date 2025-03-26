@@ -8,12 +8,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { motion, useMotionValue, useTransform } from 'framer-motion';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import Link from 'next/link';
 
 export default function Signup() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [masterPassword, setMasterPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -29,7 +28,7 @@ export default function Signup() {
 
     try {
       console.log({ email, password });
-      router.push('/login');
+      router.push('/dashboard');
     } catch (err: any) { // added err:any
       setError('Signup failed. Please try again.');
       console.error(err);
@@ -124,6 +123,7 @@ export default function Signup() {
                 )}
               </Button>
             </motion.div>
+            Dont have an account?<Link href={'/signup'}> Click Here to SignUp</Link>
           </form>
         </CardContent>
       </Card>
