@@ -16,8 +16,6 @@ export default function Signup() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [showMasterPassword, setShowMasterPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const x = useMotionValue(0);
@@ -28,14 +26,9 @@ export default function Signup() {
     e.preventDefault();
     setIsLoading(true);
 
-    if (password !== confirmPassword) {
-      setError('Passwords do not match.');
-      setIsLoading(false);
-      return;
-    }
 
     try {
-      console.log({ email, password, masterPassword });
+      console.log({ email, password });
       router.push('/login');
     } catch (err: any) { // added err:any
       setError('Signup failed. Please try again.');
@@ -51,7 +44,7 @@ export default function Signup() {
       transition={{ duration: 0.6 }}
       className="flex items-center justify-center min-h-screen bg-gradient-to-br from-indigo-200 to-purple-300"
     >
-      <Card className="w-full max-w-md p-8 rounded-sm shadow-2xl backdrop-blur-xl bg-white/20 border border-purple-200">
+      <Card className="w-full max-w-md p-8 shadow-2xl backdrop-blur-xl bg-white/20 border border-purple-200 rounded-sm">
         <CardHeader>
           <motion.div
             initial={{ opacity: 0, y: -20 }}
@@ -59,7 +52,7 @@ export default function Signup() {
             transition={{ duration: 0.4 }}
           >
             <CardTitle className="text-4xl font-extrabold text-center text-purple-700 tracking-wide">
-              Lokify Signup
+              Welcome Back! Login to Lokify
             </CardTitle>
             <CardDescription className="text-center text-gray-500 mt-2">
               Secure your digital world with Lokify.
@@ -101,48 +94,8 @@ export default function Signup() {
                 </button>
               </div>
             </div>
-            <div>
-              <Label htmlFor="masterPassword" className="text-sm font-medium text-gray-700">Master Password</Label>
-              <div className="relative">
-                <Input
-                  type={showMasterPassword ? 'text' : 'password'}
-                  id="masterPassword"
-                  value={masterPassword}
-                  onChange={(e) => setMasterPassword(e.target.value)}
-                  placeholder="Master password"
-                  required
-                  className="w-full mt-1 bg-white/80 border border-gray-300 rounded-md"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowMasterPassword(!showMasterPassword)}
-                  className="absolute inset-y-0 right-3 flex items-center text-gray-500"
-                >
-                  {showMasterPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                </button>
-              </div>
-            </div>
-            <div>
-              <Label htmlFor="confirmPassword" className="text-sm font-medium text-gray-700">Confirm Password</Label>
-              <div className="relative">
-                <Input
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  id="confirmPassword"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Confirm password"
-                  required
-                  className="w-full mt-1 bg-white/80 border border-gray-300 rounded-md"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute inset-y-0 right-3 flex items-center text-gray-500"
-                >
-                  {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                </button>
-              </div>
-            </div>
+         
+           
             {error && <p className="text-red-500 mt-2">{error}</p>}
             <motion.div
               ref={buttonRef}
@@ -164,10 +117,10 @@ export default function Signup() {
                 {isLoading ? (
                   <div className="flex items-center justify-center gap-2">
                     <Loader2 className="animate-spin" />
-                    Creating Account...
+                    Getting You In ...
                   </div>
                 ) : (
-                  "Create Lokify Account"
+                  "Login To Lokify"
                 )}
               </Button>
             </motion.div>
