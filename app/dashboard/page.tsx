@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { toast } from 'sonner';
 import { useTheme } from '../providers';
-import { FiSun, FiMoon, FiShield, FiLock, FiBell, FiKey, FiPlus, FiSearch } from "react-icons/fi";
+import { FiSun, FiMoon, FiShield, FiLock, FiBell, FiKey, FiPlus, FiSearch, FiEye, FiTrash2, FiMenu, FiLogOut, FiUserX } from "react-icons/fi";
 import Link from "next/link";
 
 // Dynamically import DragDropContext with no SSR
@@ -59,6 +59,7 @@ export default function Dashboard() {
   const [timeLeft, setTimeLeft] = useState<number>(40);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -215,6 +216,22 @@ export default function Dashboard() {
 
   const handleViewPassword = async (passwordId: string) => {
     try {
+      // First verify the master password
+      const verifyResponse = await fetch('/api/users/verify-master-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify({ masterPassword }),
+      });
+
+      if (!verifyResponse.ok) {
+        const error = await verifyResponse.json();
+        throw new Error(error.message || 'Invalid master password');
+      }
+
+      // If master password is verified, proceed with viewing the password
       const response = await fetch(`/api/dashboard/view/${passwordId}`, {
         method: 'POST',
         headers: {
@@ -223,9 +240,14 @@ export default function Dashboard() {
         },
         body: JSON.stringify({ masterPassword }),
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message);
 
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to view password');
+      }
+
+      const data = await response.json();
+      
       // Clear any existing timeout
       if (viewPasswordTimeout) {
         clearTimeout(viewPasswordTimeout);
@@ -273,18 +295,25 @@ export default function Dashboard() {
         body: JSON.stringify({ masterPassword }),
       });
 
-      const verifyData = await verifyResponse.json();
-      if (!verifyResponse.ok) throw new Error(verifyData.message);
+      if (!verifyResponse.ok) {
+        const error = await verifyResponse.json();
+        throw new Error(error.message || 'Invalid master password');
+      }
 
-      // If master password is correct, proceed with deletion
+      // If master password is verified, proceed with deletion
       const response = await fetch(`/api/dashboard/delete/${passwordId}`, {
         method: 'DELETE',
         headers: {
+          'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
+        body: JSON.stringify({ masterPassword }), // Send master password for final verification
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message);
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to delete password');
+      }
       
       toast.success('Password deleted successfully', {
         duration: 5000,
@@ -292,8 +321,13 @@ export default function Dashboard() {
         position: 'top-right',
         style: { display: 'flex', flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center' },
       });
+      
+      // Reset states
       setShowMasterPassword(false);
       setMasterPassword('');
+      setIsDeleting(false);
+      
+      // Refresh the password list
       fetchPasswords();
     } catch (error: any) {
       toast.error(error.message || 'Failed to delete password', {
@@ -408,7 +442,8 @@ export default function Dashboard() {
     }
   };
 
-  const handleMasterPasswordSubmit = async () => {
+  const handleMasterPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!selectedPasswordId) return;
     
     try {
@@ -460,6 +495,59 @@ export default function Dashboard() {
                   <FiMoon className="h-5 w-5" />
                 )}
               </button>
+              <div className="relative">
+                <button
+                  onClick={() => setShowMenu(!showMenu)}
+                  className={`p-2 rounded-lg hover:bg-accent transition-colors ${
+                    showMenu ? 'bg-accent' : ''
+                  }`}
+                  aria-label="Menu"
+                >
+                  <FiMenu className="h-5 w-5" />
+                </button>
+                
+                {/* Dropdown Menu */}
+                {showMenu && (
+                  <div className={`absolute right-0 mt-2 w-48 rounded-md shadow-lg ${
+                    theme === 'dark' 
+                      ? 'bg-gray-800 border border-gray-700' 
+                      : 'bg-white border border-gray-200'
+                  }`}>
+                    <div className="py-1">
+                      <button
+                        onClick={() => {
+                          setShowMenu(false);
+                          handleLogout();
+                        }}
+                        className={`flex items-center w-full px-4 py-2 text-sm ${
+                          theme === 'dark'
+                            ? 'text-gray-200 hover:bg-gray-700'
+                            : 'text-gray-700 hover:bg-gray-100'
+                        }`}
+                      >
+                        <FiLogOut className="mr-3 h-5 w-5" />
+                        Logout
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowMenu(false);
+                          setSelectedPasswordId('');
+                          setIsDeleting(false);
+                          setShowMasterPassword(true);
+                        }}
+                        className={`flex items-center w-full px-4 py-2 text-sm ${
+                          theme === 'dark'
+                            ? 'text-red-400 hover:bg-gray-700'
+                            : 'text-red-600 hover:bg-gray-100'
+                        }`}
+                      >
+                        <FiUserX className="mr-3 h-5 w-5" />
+                        Delete Account
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -475,7 +563,11 @@ export default function Dashboard() {
               placeholder="Search sites..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 rounded-lg bg-background border border-input focus:ring-2 focus:ring-primary focus:border-transparent"
+              className={`w-full pl-10 pr-4 py-2 rounded-lg border-2 ${
+                theme === 'dark'
+                  ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-400'
+                  : 'bg-white border-gray-200 text-gray-900 placeholder-gray-500'
+              } focus:outline-none focus:ring-2 focus:ring-blue-500/20`}
             />
           </div>
           <button
@@ -490,7 +582,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Main Content */}
+      {/* Password List */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {loading ? (
           <div className="text-center py-8">Loading passwords...</div>
@@ -502,7 +594,40 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredPasswords.map((password) => (
               <div key={password.id} className="glass-effect rounded-xl p-6 card-hover">
-                <h3 className="text-xl font-semibold mb-2">{password.site}</h3>
+                <div className="flex justify-between items-start mb-4">
+                  <h3 className="text-xl font-semibold">{password.site}</h3>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => {
+                        setSelectedPasswordId(password.id);
+                        setShowMasterPassword(true);
+                      }}
+                      className={`p-2 rounded-md ${
+                        theme === 'dark'
+                          ? 'text-blue-400 hover:bg-gray-800'
+                          : 'text-blue-600 hover:bg-gray-100'
+                      } transition-colors`}
+                      title="View Password"
+                    >
+                      <FiEye className="h-5 w-5" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSelectedPasswordId(password.id);
+                        setIsDeleting(true);
+                        setShowMasterPassword(true);
+                      }}
+                      className={`p-2 rounded-md ${
+                        theme === 'dark'
+                          ? 'text-red-400 hover:bg-gray-800'
+                          : 'text-red-600 hover:bg-gray-100'
+                      } transition-colors`}
+                      title="Delete Password"
+                    >
+                      <FiTrash2 className="h-5 w-5" />
+                    </button>
+                  </div>
+                </div>
                 {password.username && (
                   <p className="text-muted-foreground mb-2">Username: {password.username}</p>
                 )}
@@ -604,6 +729,130 @@ export default function Dashboard() {
                     } transition-colors`}
                   >
                     Add Password
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Master Password Modal */}
+      {showMasterPassword && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className={`w-full max-w-md border-2 shadow-2xl ${
+            theme === 'dark' 
+              ? 'bg-gray-900 border-gray-700 shadow-gray-900/50' 
+              : 'bg-white border-gray-200 shadow-gray-900/20'
+          }`}>
+            <div className="p-6">
+              <h2 className="text-2xl font-bold mb-4">
+                {isDeleting ? 'Delete Password' : 'View Password'}
+              </h2>
+              <form onSubmit={handleMasterPasswordSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Master Password</label>
+                  <input
+                    type="password"
+                    value={masterPassword}
+                    onChange={(e) => setMasterPassword(e.target.value)}
+                    className={`w-full px-3 py-2 rounded-md border-2 ${
+                      theme === 'dark'
+                        ? 'bg-gray-800 border-gray-700 focus:border-blue-500'
+                        : 'bg-gray-50 border-gray-200 focus:border-blue-500'
+                    } focus:outline-none focus:ring-2 focus:ring-blue-500/20`}
+                    placeholder="Enter your master password"
+                    required
+                  />
+                </div>
+                <div className="flex justify-end space-x-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowMasterPassword(false);
+                      setMasterPassword('');
+                      setIsDeleting(false);
+                    }}
+                    className={`px-4 py-2 rounded-md border-2 ${
+                      theme === 'dark'
+                        ? 'border-gray-700 hover:bg-gray-800'
+                        : 'border-gray-200 hover:bg-gray-50'
+                    } transition-colors`}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className={`px-4 py-2 rounded-md text-white ${
+                      isDeleting
+                        ? theme === 'dark'
+                          ? 'bg-red-600 hover:bg-red-700'
+                          : 'bg-red-600 hover:bg-red-700'
+                        : theme === 'dark'
+                          ? 'bg-blue-600 hover:bg-blue-700'
+                          : 'bg-black hover:bg-gray-800'
+                    } transition-colors`}
+                  >
+                    {isDeleting ? 'Delete' : 'View'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Master Password Modal for Account Deletion */}
+      {showMasterPassword && !selectedPasswordId && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className={`w-full max-w-md border-2 shadow-2xl ${
+            theme === 'dark' 
+              ? 'bg-gray-900 border-gray-700 shadow-gray-900/50' 
+              : 'bg-white border-gray-200 shadow-gray-900/20'
+          }`}>
+            <div className="p-6">
+              <h2 className="text-2xl font-bold mb-4">Delete Account</h2>
+              <p className="text-red-500 mb-4">Warning: This action cannot be undone. All your passwords will be permanently deleted.</p>
+              <form onSubmit={handleDeleteAccount} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Master Password</label>
+                  <input
+                    type="password"
+                    value={masterPassword}
+                    onChange={(e) => setMasterPassword(e.target.value)}
+                    className={`w-full px-3 py-2 rounded-md border-2 ${
+                      theme === 'dark'
+                        ? 'bg-gray-800 border-gray-700 focus:border-blue-500'
+                        : 'bg-gray-50 border-gray-200 focus:border-blue-500'
+                    } focus:outline-none focus:ring-2 focus:ring-blue-500/20`}
+                    placeholder="Enter your master password"
+                    required
+                  />
+                </div>
+                <div className="flex justify-end space-x-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowMasterPassword(false);
+                      setMasterPassword('');
+                    }}
+                    className={`px-4 py-2 rounded-md border-2 ${
+                      theme === 'dark'
+                        ? 'border-gray-700 hover:bg-gray-800'
+                        : 'border-gray-200 hover:bg-gray-50'
+                    } transition-colors`}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className={`px-4 py-2 rounded-md text-white ${
+                      theme === 'dark'
+                        ? 'bg-red-600 hover:bg-red-700'
+                        : 'bg-red-600 hover:bg-red-700'
+                    } transition-colors`}
+                  >
+                    Delete Account
                   </button>
                 </div>
               </form>

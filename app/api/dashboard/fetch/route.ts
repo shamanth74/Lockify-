@@ -84,11 +84,12 @@ export async function POST(req: NextRequest) {
     if (!masterPassword) {
       const passwords = await Data.find({ user_id: decoded.userId })
         .select('site username password')
-        .lean() as PasswordResponse[];
+        .lean() as unknown as MongoPassword[];
       
       return NextResponse.json({ 
         passwords: passwords.map(p => ({
-          id: p.id,
+          id: p._id.toString(),
+          _id: p._id.toString(),
           site: p.site,
           username: p.username,
           password: '********' // Masked password
