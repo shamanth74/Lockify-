@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { toast } from 'sonner';
 import { useTheme } from '../providers';
-import { FiSun, FiMoon, FiShield, FiLock, FiBell, FiKey, FiPlus, FiSearch, FiEye, FiTrash2, FiMenu, FiLogOut, FiUserX } from "react-icons/fi";
+import { FiSun, FiMoon, FiShield, FiLock, FiBell, FiKey, FiPlus, FiSearch, FiEye, FiTrash2, FiMenu, FiLogOut, FiUserX, FiUser, FiX, FiClock } from "react-icons/fi";
 import Link from "next/link";
 
 // Dynamically import DragDropContext with no SSR
@@ -60,6 +60,7 @@ export default function Dashboard() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -517,6 +518,20 @@ export default function Dashboard() {
                       <button
                         onClick={() => {
                           setShowMenu(false);
+                          setShowProfile(true);
+                        }}
+                        className={`flex items-center w-full px-4 py-2 text-sm ${
+                          theme === 'dark'
+                            ? 'text-gray-200 hover:bg-gray-700'
+                            : 'text-gray-700 hover:bg-gray-100'
+                        }`}
+                      >
+                        <FiUser className="mr-3 h-5 w-5" />
+                        Profile
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowMenu(false);
                           handleLogout();
                         }}
                         className={`flex items-center w-full px-4 py-2 text-sm ${
@@ -856,6 +871,57 @@ export default function Dashboard() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Profile Modal */}
+      {showProfile && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className={`w-full max-w-md border-2 shadow-2xl ${
+            theme === 'dark' 
+              ? 'bg-gray-900 border-gray-700 shadow-gray-900/50' 
+              : 'bg-white border-gray-200 shadow-gray-900/20'
+          }`}>
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-2xl font-bold">Profile</h2>
+                <button
+                  onClick={() => setShowProfile(false)}
+                  className={`p-2 rounded-lg hover:bg-accent transition-colors ${
+                    theme === 'dark' ? 'hover:bg-gray-800' : 'hover:bg-gray-100'
+                  }`}
+                >
+                  <FiX className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="space-y-4">
+                <div className="flex items-center space-x-3">
+                  <div className={`p-3 rounded-full ${
+                    theme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'
+                  }`}>
+                    <FiUser className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Email</p>
+                    <p className="font-medium">{userProfile?.email}</p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <div className={`p-3 rounded-full ${
+                    theme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'
+                  }`}>
+                    <FiClock className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Last Login</p>
+                    <p className="font-medium">
+                      {userProfile?.lastLogin ? new Date(userProfile.lastLogin).toLocaleString() : 'N/A'}
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
