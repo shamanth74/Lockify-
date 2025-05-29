@@ -17,26 +17,37 @@ export async function POST(req: NextRequest) {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { userId: string };
+    const { masterPassword } = await req.json();
 
-    // Extract query params
+    // Validate user
+    const existingUser = await Users.findOne({ _id: decoded.userId });
+    if (!existingUser) {
+      return NextResponse.json({ message: "User not found" }, { status: 404 });
+    }
+
+    // If no master password provided, return list of passwords without decrypted values
+    if (!masterPassword) {
+      const passwords = await Data.find({ user_id: decoded.userId })
+        .select('site username password')
+        .lean();
+      
+      return NextResponse.json({ 
+        passwords: passwords.map(p => ({
+          id: p._id.toString(),
+          site: p.site,
+          username: p.username,
+          password: '********' // Masked password
+        }))
+      });
+    }
+
+    // If master password provided, decrypt and return the actual password
     const url = new URL(req.url);
     const site = url.searchParams.get('site');
     const encryptedPassword = url.searchParams.get('encryptedPassword');
 
     if (!site || !encryptedPassword) {
       return NextResponse.json({ message: "Missing site or encrypted password" }, { status: 400 });
-    }
-
-    // Read master password from JSON body
-    const { masterPassword } = await req.json();
-    if (!masterPassword) {
-      return NextResponse.json({ message: "Master Password is required" }, { status: 400 });
-    }
-
-    // Validate user
-    const existingUser = await Users.findOne({ _id: decoded.userId });
-    if (!existingUser) {
-      return NextResponse.json({ message: "User not found" }, { status: 404 });
     }
 
     // Find the data for the given site and encrypted password
@@ -50,7 +61,8 @@ export async function POST(req: NextRequest) {
     if (!decryptedPassword) {
       return NextResponse.json({ message: "Failed to decrypt password. Invalid master password." }, { status: 403 });
     }
-    await sendEmail(existingUser.email, "Password Viewed Notification", `Your password for ${site} was viewed.If not You Take necessary Actions`);
+
+    await sendEmail(existingUser.email, "Password Viewed Notification", `Your password for ${site} was viewed. If not you, take necessary actions.`);
     return NextResponse.json({ decryptedPassword }, { status: 200 });
 
   } catch (error) {

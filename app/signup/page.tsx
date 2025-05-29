@@ -1,181 +1,152 @@
 "use client"; // Important for Next.js App Router and client-side interactivity
 
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { motion, useMotionValue, useTransform } from 'framer-motion';
-import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import Link from 'next/link';
+import { toast } from 'react-hot-toast';
+import { motion } from 'framer-motion';
 
 export default function Signup() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [masterPassword, setMasterPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [showMasterPassword, setShowMasterPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const x = useMotionValue(0);
-  const background = useTransform(x, [-20, 0, 20], ["#6B46C1", "#8B5CF6", "#6B46C1"]);
-  const buttonRef = useRef(null);
 
-  const handleSubmit = async (e: any) => { // added e:any
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    if (password !== confirmPassword) {
-      setError('Passwords do not match.');
-      setIsLoading(false);
-      return;
-    }
-
     try {
-      console.log({ email, password, masterPassword });
+      const response = await fetch('/api/users/signup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password, masterPassword }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message);
+
+      toast.success('Account created successfully!', {
+        duration: 5000,
+        closeButton: true,
+        position: 'top-right',
+        style: { display: 'flex', flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center' },
+      });
+      
       router.push('/login');
-    } catch (err: any) { // added err:any
-      setError('Signup failed. Please try again.');
-      console.error(err);
+    } catch (error: any) {
+      toast.error(error.message || 'Signup failed', {
+        duration: 5000,
+        closeButton: true,
+        position: 'top-right',
+        style: { display: 'flex', flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center' },
+      });
+    } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.6 }}
-      className="flex items-center justify-center min-h-screen bg-gradient-to-br from-indigo-200 to-purple-300"
-    >
-      <Card className="w-full max-w-md p-8 rounded-sm shadow-2xl backdrop-blur-xl bg-white/20 border border-purple-200">
-        <CardHeader>
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-          >
-            <CardTitle className="text-4xl font-extrabold text-center text-purple-700 tracking-wide">
-              Lokify SignUp
-            </CardTitle>
-            <CardDescription className="text-center text-gray-500 mt-2">
-              Secure your digital world with Lokify.
-            </CardDescription>
-          </motion.div>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="w-full max-w-md"
+      >
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 space-y-6">
+          <div className="text-center">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Create Account</h1>
+            <p className="text-gray-600 dark:text-gray-300">Sign up to get started</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <Label htmlFor="email" className="text-sm font-medium text-gray-700">Email</Label>
-              <Input
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Email
+              </label>
+              <input
                 type="email"
                 id="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="Your email address"
+                className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                placeholder="Enter your email"
                 required
-                className="w-full mt-1 bg-white/80 border border-gray-300 rounded-md"
               />
             </div>
+
             <div>
-              <Label htmlFor="password" className="text-sm font-medium text-gray-700">Password</Label>
-              <div className="relative">
-                <Input
-                  type={showPassword ? 'text' : 'password'}
-                  id="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter password"
-                  required
-                  className="w-full mt-1 bg-white/80 border border-gray-300 rounded-md"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-3 flex items-center text-gray-500"
-                >
-                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                </button>
-              </div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Password
+              </label>
+              <input
+                type="password"
+                id="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                placeholder="Create a password"
+                required
+              />
             </div>
+
             <div>
-              <Label htmlFor="masterPassword" className="text-sm font-medium text-gray-700">Master Password</Label>
-              <div className="relative">
-                <Input
-                  type={showMasterPassword ? 'text' : 'password'}
-                  id="masterPassword"
-                  value={masterPassword}
-                  onChange={(e) => setMasterPassword(e.target.value)}
-                  placeholder="Master password"
-                  required
-                  className="w-full mt-1 bg-white/80 border border-gray-300 rounded-md"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowMasterPassword(!showMasterPassword)}
-                  className="absolute inset-y-0 right-3 flex items-center text-gray-500"
-                >
-                  {showMasterPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                </button>
-              </div>
+              <label htmlFor="masterPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Master Password
+              </label>
+              <input
+                type="password"
+                id="masterPassword"
+                value={masterPassword}
+                onChange={(e) => setMasterPassword(e.target.value)}
+                className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                placeholder="Create a master password"
+                required
+              />
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                This will be used to encrypt and decrypt your passwords
+              </p>
             </div>
-            <div>
-              <Label htmlFor="confirmPassword" className="text-sm font-medium text-gray-700">Confirm Password</Label>
-              <div className="relative">
-                <Input
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  id="confirmPassword"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Confirm password"
-                  required
-                  className="w-full mt-1 bg-white/80 border border-gray-300 rounded-md"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute inset-y-0 right-3 flex items-center text-gray-500"
-                >
-                  {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                </button>
-              </div>
-            </div>
-            {error && <p className="text-red-500 mt-2">{error}</p>}
-            <motion.div
-              ref={buttonRef}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              style={{ background }}
-              onMouseMove={(e) => {
-                if (buttonRef.current) {
-                    const rect = (buttonRef.current as HTMLElement).getBoundingClientRect();
-                  x.set(e.clientX - rect.left - rect.width / 2);
-                }
-              }}
+
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              type="submit"
+              disabled={isLoading}
+              className={`w-full py-3 px-4 rounded-lg text-white font-medium transition-all duration-200 ${
+                isLoading 
+                  ? 'bg-blue-400 cursor-not-allowed' 
+                  : 'bg-blue-600 hover:bg-blue-700'
+              }`}
             >
-              <Button
-                type="submit"
-                className="w-full text-white font-semibold rounded-md"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <div className="flex items-center justify-center gap-2">
-                    <Loader2 className="animate-spin" />
-                    Creating Account...
-                  </div>
-                ) : (
-                  "Create Lokify Account"
-                )}
-              </Button>
-            </motion.div>
-            Already have an account?<Link href={'/login'}> Click Here to Login</Link>
+              {isLoading ? (
+                <div className="flex items-center justify-center">
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                  Creating account...
+                </div>
+              ) : (
+                'Create Account'
+              )}
+            </motion.button>
           </form>
-        </CardContent>
-      </Card>
-    </motion.div>
+
+          <div className="text-center">
+            <p className="text-gray-600 dark:text-gray-300">
+              Already have an account?{' '}
+              <Link 
+                href="/login" 
+                className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium transition-colors duration-200"
+              >
+                Sign in
+              </Link>
+            </p>
+          </div>
+        </div>
+      </motion.div>
+    </div>
   );
 }

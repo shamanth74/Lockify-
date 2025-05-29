@@ -1,132 +1,123 @@
 "use client"; // Important for Next.js App Router and client-side interactivity
 
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { motion, useMotionValue, useTransform } from 'framer-motion';
-import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import Link from 'next/link';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { toast } from 'sonner';
 
-export default function Signup() {
+export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const x = useMotionValue(0);
-  const background = useTransform(x, [-20, 0, 20], ["#6B46C1", "#8B5CF6", "#6B46C1"]);
-  const buttonRef = useRef(null);
 
-  const handleSubmit = async (e: any) => { // added e:any
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-
+    setLoading(true);
 
     try {
-      console.log({ email, password });
+      const response = await fetch('/api/users/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Login failed');
+      }
+
+      // Store the token
+      localStorage.setItem('token', data.token);
+      toast.success('Login successful!');
       router.push('/dashboard');
-    } catch (err: any) { // added err:any
-      setError('Signup failed. Please try again.');
-      console.error(err);
-      setIsLoading(false);
+    } catch (error: any) {
+      toast.error(error.message || 'Something went wrong');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.6 }}
-      className="flex items-center justify-center min-h-screen bg-gradient-to-br from-indigo-200 to-purple-300"
-    >
-      <Card className="w-full max-w-md p-8 shadow-2xl backdrop-blur-xl bg-white/20 border border-purple-200 rounded-sm">
-        <CardHeader>
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-          >
-            <CardTitle className="text-4xl font-extrabold text-center text-purple-700 tracking-wide">
-              Welcome Back! Login to Lokify
-            </CardTitle>
-            <CardDescription className="text-center text-gray-500 mt-2">
-              Secure your digital world with Lokify.
-            </CardDescription>
-          </motion.div>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 to-gray-800 p-4">
+      <Card className="w-full max-w-md bg-gray-800 border-gray-700">
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-2xl font-bold text-white text-center">Welcome back</CardTitle>
+          <CardDescription className="text-gray-400 text-center">
+            Enter your credentials to access your account
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <Label htmlFor="email" className="text-sm font-medium text-gray-700">Email</Label>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <label htmlFor="email" className="text-sm font-medium text-gray-300">
+                Email
+              </label>
               <Input
-                type="email"
                 id="email"
+                type="email"
+                placeholder="name@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="Your email address"
                 required
-                className="w-full mt-1 bg-white/80 border border-gray-300 rounded-md"
+                className="bg-gray-700 border-gray-600 text-white placeholder-gray-400"
               />
             </div>
-            <div>
-              <Label htmlFor="password" className="text-sm font-medium text-gray-700">Password</Label>
+            <div className="space-y-2">
+              <label htmlFor="password" className="text-sm font-medium text-gray-300">
+                Password
+              </label>
               <div className="relative">
                 <Input
-                  type={showPassword ? 'text' : 'password'}
                   id="password"
+                  type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter password"
                   required
-                  className="w-full mt-1 bg-white/80 border border-gray-300 rounded-md"
+                  className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 pr-10"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-3 flex items-center text-gray-500"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
                 >
-                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
             </div>
-         
-           
-            {error && <p className="text-red-500 mt-2">{error}</p>}
-            <motion.div
-              ref={buttonRef}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              style={{ background }}
-              onMouseMove={(e) => {
-                if (buttonRef.current) {
-                    const rect = (buttonRef.current as HTMLElement).getBoundingClientRect();
-                  x.set(e.clientX - rect.left - rect.width / 2);
-                }
-              }}
+            <Button
+              type="submit"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+              disabled={loading}
             >
-              <Button
-                type="submit"
-                className="w-full text-white font-semibold rounded-md"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <div className="flex items-center justify-center gap-2">
-                    <Loader2 className="animate-spin" />
-                    Getting You In ...
-                  </div>
-                ) : (
-                  "Login To Lokify"
-                )}
-              </Button>
-            </motion.div>
-            Dont have an account?<Link href={'/signup'}> Click Here to SignUp</Link>
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Signing in...
+                </>
+              ) : (
+                'Sign in'
+              )}
+            </Button>
           </form>
         </CardContent>
+        <CardFooter className="flex flex-col space-y-4">
+          <div className="text-sm text-gray-400 text-center">
+            Don't have an account?{' '}
+            <Link href="/signup" className="text-blue-500 hover:text-blue-400">
+              Sign up
+            </Link>
+          </div>
+        </CardFooter>
       </Card>
-    </motion.div>
+    </div>
   );
 }

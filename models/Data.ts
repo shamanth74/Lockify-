@@ -1,15 +1,35 @@
-import mongoose,{Schema,Document, Types} from "mongoose";
+import mongoose, { Schema, Document } from 'mongoose';
 
-interface IData extends Document{
-    user_id:Types.ObjectId,
-    site:string,
-    password:string
+export interface IData extends Document {
+  user_id: mongoose.Types.ObjectId;
+  site: string;
+  username?: string;
+  password: string;
 }
 
-const DataSchema:Schema=new Schema({
-    user_id:{type:Types.ObjectId,required:true},
-    site:{type:String,required:true},
-    password:{type:String,required:true}
-})
+const DataSchema = new Schema<IData>({
+  user_id: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  site: {
+    type: String,
+    required: true
+  },
+  username: {
+    type: String,
+    required: false
+  },
+  password: {
+    type: String,
+    required: true
+  }
+}, {
+  timestamps: true
+});
 
-export default mongoose.models.Data || mongoose.model<IData>('data',DataSchema);
+// Check if the model exists before creating a new one
+const Data = mongoose.models.Data || mongoose.model<IData>('Data', DataSchema);
+
+export default Data;
