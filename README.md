@@ -60,7 +60,7 @@ A secure, modern password manager built with Next.js 14, TypeScript, and MongoDB
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/securepass.git
+   git clone https://github.com/shamanth74/Lockify-.git
    cd securepass
    ```
 
