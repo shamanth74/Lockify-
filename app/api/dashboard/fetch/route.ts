@@ -6,6 +6,61 @@ import { decryptPassword } from "@/utils/encryption";
 import { connectDb } from "@/lib/mongo";
 import { sendEmail } from "@/utils/email";
 
+interface PasswordResponse {
+  id: string;
+  _id: string;
+  site: string;
+  username?: string;
+  password: string;
+}
+
+interface MongoPassword {
+  _id: { toString(): string };
+  site: string;
+  username?: string;
+  password: string;
+}
+
+export async function GET(req: NextRequest) {
+  try {
+    await connectDb();
+
+    // Get token from Authorization header
+    const authHeader = req.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ message: "Unauthorized: Token missing" }, { status: 401 });
+    }
+
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { userId: string };
+
+    // Validate user
+    const existingUser = await Users.findOne({ _id: decoded.userId });
+    if (!existingUser) {
+      return NextResponse.json({ message: "User not found" }, { status: 404 });
+    }
+
+    // Fetch all passwords for the user
+    const passwords = await Data.find({ user_id: decoded.userId })
+      .select('site username password')
+      .lean() as unknown as MongoPassword[];
+    
+    const formattedPasswords: PasswordResponse[] = passwords.map(p => ({
+      id: p._id.toString(),
+      _id: p._id.toString(),
+      site: p.site,
+      username: p.username,
+      password: '********' // Masked password
+    }));
+
+    return NextResponse.json({ passwords: formattedPasswords });
+
+  } catch (error) {
+    console.error("Error in GET:", error);
+    return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     await connectDb();
@@ -29,11 +84,11 @@ export async function POST(req: NextRequest) {
     if (!masterPassword) {
       const passwords = await Data.find({ user_id: decoded.userId })
         .select('site username password')
-        .lean();
+        .lean() as PasswordResponse[];
       
       return NextResponse.json({ 
         passwords: passwords.map(p => ({
-          id: p._id.toString(),
+          id: p.id,
           site: p.site,
           username: p.username,
           password: '********' // Masked password

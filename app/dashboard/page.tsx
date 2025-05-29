@@ -1,33 +1,13 @@
-
+"use client";
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
-import {
-  Button,
-  Input,
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogDescription,
-  Command,
-  CommandInput,
-  CommandList,
-  CommandItem,
-  CommandEmpty,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui';
-import { List, Search, Plus, User, Menu, Trash, Eye, EyeOff, LogOut, Sun, Moon, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTheme } from '../providers';
+import { FiSun, FiMoon, FiShield, FiLock, FiBell, FiKey, FiPlus, FiSearch } from "react-icons/fi";
+import Link from "next/link";
 
 // Dynamically import DragDropContext with no SSR
 const DragDropContext = dynamic(
@@ -57,6 +37,7 @@ interface UserProfile {
 }
 
 export default function Dashboard() {
+  const { theme, toggleTheme } = useTheme();
   const [passwords, setPasswords] = useState<Password[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [userProfileOpen, setUserProfileOpen] = useState(false);
@@ -64,12 +45,15 @@ export default function Dashboard() {
   const [showAddPassword, setShowAddPassword] = useState(false);
   const [showMasterPassword, setShowMasterPassword] = useState(false);
   const [masterPassword, setMasterPassword] = useState('');
-  const [newPassword, setNewPassword] = useState({ site: '', username: '', password: '' });
+  const [newPassword, setNewPassword] = useState({
+    site: "",
+    username: "",
+    password: "",
+  });
   const [loading, setLoading] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const [selectedPasswordId, setSelectedPasswordId] = useState('');
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [viewingPassword, setViewingPassword] = useState<{id: string, password: string} | null>(null);
   const [viewPasswordTimeout, setViewPasswordTimeout] = useState<NodeJS.Timeout | null>(null);
   const [timeLeft, setTimeLeft] = useState<number>(40);
@@ -81,12 +65,6 @@ export default function Dashboard() {
     setIsClient(true);
     fetchPasswords();
     fetchUserProfile();
-    // Check for saved theme preference
-    const savedTheme = localStorage.getItem('theme') as 'dark' | 'light';
-    if (savedTheme) {
-      setTheme(savedTheme);
-      document.documentElement.classList.toggle('dark', savedTheme === 'dark');
-    }
   }, []);
 
   useEffect(() => {
@@ -126,48 +104,83 @@ export default function Dashboard() {
     }
   };
 
-  const toggleTheme = () => {
-    const newTheme = theme === 'dark' ? 'light' : 'dark';
-    setTheme(newTheme);
-    localStorage.setItem('theme', newTheme);
-    document.documentElement.classList.toggle('dark', newTheme === 'dark');
-  };
-
   const fetchPasswords = async () => {
     try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
       const response = await fetch('/api/dashboard/fetch', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to fetch passwords');
+      }
+
+      const data = await response.json();
+      
+      if (!data || !Array.isArray(data.passwords)) {
+        throw new Error('Invalid response format from server');
+      }
+
+      setPasswords(data.passwords);
+    } catch (error: any) {
+      console.error('Error fetching passwords:', error);
+      toast.error(error.message || 'Failed to fetch passwords');
+      setPasswords([]);
+      
+      // If unauthorized, redirect to login
+      if (error.message.includes('unauthorized') || error.message.includes('token')) {
+        router.push('/login');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Add useEffect to fetch passwords on component mount
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      fetchPasswords();
+    } else {
+      router.push('/login');
+    }
+  }, [router]);
+
+  const handleAddPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      if (!newPassword.site || !newPassword.password || !masterPassword) {
+        toast.error('Site, password, and master password are required');
+        return;
+      }
+
+      // First verify the master password
+      const verifyResponse = await fetch('/api/users/verify-master-password', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
-        body: JSON.stringify({ masterPassword: '' }),
+        body: JSON.stringify({ masterPassword }),
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message);
-      setPasswords(data.passwords || []);
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to fetch passwords', {
-        duration: 5000,
-        closeButton: true,
-        position: 'top-right',
-        style: { display: 'flex', flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center' },
-      });
-    }
-  };
 
-  const handleAddPassword = async () => {
-    try {
-      if (!newPassword.site || !newPassword.password) {
-        toast.error('Site and password are required', {
-          duration: 5000,
-          closeButton: true,
-          position: 'top-right',
-          style: { display: 'flex', flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center' },
-        });
-        return;
+      if (!verifyResponse.ok) {
+        const error = await verifyResponse.json();
+        throw new Error(error.message || 'Invalid master password');
       }
 
+      // If master password is verified, proceed with adding the password
       const response = await fetch('/api/dashboard/add', {
         method: 'POST',
         headers: {
@@ -176,30 +189,27 @@ export default function Dashboard() {
         },
         body: JSON.stringify({
           site: newPassword.site,
-          username: newPassword.username,
+          username: newPassword.username || '',
           password: newPassword.password,
-          masterPassword: masterPassword
+          masterPassword
         }),
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message);
-      toast.success('Password added successfully', {
-        duration: 5000,
-        closeButton: true,
-        position: 'top-right',
-        style: { display: 'flex', flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center' },
-      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to add password');
+      }
+
+      toast.success('Password added successfully');
       setShowAddPassword(false);
-      setNewPassword({ site: '', username: '', password: '' });
-      setMasterPassword('');
-      fetchPasswords();
+      setNewPassword({ site: "", username: "", password: "" });
+      setMasterPassword("");
+      
+      // Use the new refresh function
+      refreshPasswords();
     } catch (error: any) {
-      toast.error(error.message || 'Failed to add password', {
-        duration: 5000,
-        closeButton: true,
-        position: 'top-right',
-        style: { display: 'flex', flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center' },
-      });
+      toast.error(error.message || 'Failed to add password');
+      setMasterPassword("");
     }
   };
 
@@ -417,265 +427,188 @@ export default function Dashboard() {
     }
   };
 
+  // Add a function to manually refresh passwords
+  const refreshPasswords = () => {
+    fetchPasswords();
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
-      <nav className="bg-white dark:bg-gray-800 shadow-lg">
+    <div className="min-h-screen gradient-bg">
+      {/* Navigation Bar */}
+      <nav className="glass-effect sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
+          <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white">Password Manager</h1>
+              <FiShield className="h-8 w-8 text-primary" />
+              <span className="ml-2 text-xl font-bold">SecurePass</span>
             </div>
             <div className="flex items-center space-x-4">
+              <Link 
+                href="/how-its-safe" 
+                className="text-sm font-medium hover:text-primary transition-colors"
+              >
+                How It's Safe
+              </Link>
               <button
                 onClick={toggleTheme}
-                className="p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
+                className="p-2 rounded-lg hover:bg-accent transition-colors"
+                aria-label="Toggle theme"
               >
-                {theme === 'dark' ? '🌞' : '🌙'}
-              </button>
-              <button
-                onClick={handleLogout}
-                className="px-4 py-2 rounded-lg text-white bg-red-600 hover:bg-red-700 transition-colors duration-200"
-              >
-                Logout
+                {theme === 'dark' ? (
+                  <FiSun className="h-5 w-5" />
+                ) : (
+                  <FiMoon className="h-5 w-5" />
+                )}
               </button>
             </div>
           </div>
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex justify-between items-center mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Your Passwords</h2>
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+      {/* Search Bar and Add Button */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div className="flex items-center justify-between gap-4">
+          <div className="relative flex-1">
+            <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search sites..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 rounded-lg bg-background border border-input focus:ring-2 focus:ring-primary focus:border-transparent"
+            />
+          </div>
+          <button
             onClick={() => setShowAddPassword(true)}
-            className="px-4 py-2 rounded-lg text-white bg-blue-600 hover:bg-blue-700 transition-colors duration-200"
+            className={`px-4 py-2 rounded-lg text-white transition-colors ${
+              theme === 'dark' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-black hover:bg-gray-800'
+            }`}
           >
+            <FiPlus className="inline-block mr-2" />
             Add Password
-          </motion.button>
+          </button>
         </div>
+      </div>
 
-        {passwords.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-gray-600 dark:text-gray-300">No passwords saved yet. Add your first password!</p>
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {loading ? (
+          <div className="text-center py-8">Loading passwords...</div>
+        ) : filteredPasswords.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            {searchQuery ? 'No passwords found matching your search.' : 'No passwords saved yet.'}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {passwords.map((password) => (
-              <motion.div
-                key={password.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-                className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 space-y-4"
-              >
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{password.site}</h3>
-                    {password.username && (
-                      <p className="text-sm text-gray-600 dark:text-gray-300">Username: {password.username}</p>
-                    )}
-                  </div>
-                  <div className="flex space-x-2">
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => {
-                        setSelectedPasswordId(password.id);
-                        setShowMasterPassword(true);
-                      }}
-                      className="p-2 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors duration-200"
-                    >
-                      👁️
-                    </motion.button>
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => {
-                        setSelectedPasswordId(password.id);
-                        setIsDeleting(true);
-                        setShowMasterPassword(true);
-                      }}
-                      className="p-2 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors duration-200"
-                    >
-                      🗑️
-                    </motion.button>
-                  </div>
-                </div>
-                {viewingPassword?.id === password.id && (
-                  <div className="mt-2 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg">
-                    <p className="text-sm text-gray-900 dark:text-white break-all">
-                      Password: {viewingPassword?.password}
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      Visible for {timeLeft} seconds
-                    </p>
-                  </div>
+            {filteredPasswords.map((password) => (
+              <div key={password.id} className="glass-effect rounded-xl p-6 card-hover">
+                <h3 className="text-xl font-semibold mb-2">{password.site}</h3>
+                {password.username && (
+                  <p className="text-muted-foreground mb-2">Username: {password.username}</p>
                 )}
-              </motion.div>
+                <p className="text-muted-foreground">Password: {renderPassword(password)}</p>
+              </div>
             ))}
           </div>
         )}
       </main>
 
+      {/* Add Password Modal */}
       {showAddPassword && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 w-full max-w-md"
-          >
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Add New Password</h2>
-            <form onSubmit={(e) => { e.preventDefault(); handleAddPassword(); }} className="space-y-4">
-              <div>
-                <label htmlFor="site" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Site
-                </label>
-                <input
-                  type="text"
-                  id="site"
-                  value={newPassword.site}
-                  onChange={(e) => setNewPassword({ ...newPassword, site: e.target.value })}
-                  className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                  placeholder="Enter site name"
-                  required
-                />
-              </div>
-              <div>
-                <label htmlFor="username" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Username (optional)
-                </label>
-                <input
-                  type="text"
-                  id="username"
-                  value={newPassword.username}
-                  onChange={(e) => setNewPassword({ ...newPassword, username: e.target.value })}
-                  className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                  placeholder="Enter username"
-                />
-              </div>
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Password
-                </label>
-                <input
-                  type="password"
-                  id="password"
-                  value={newPassword.password}
-                  onChange={(e) => setNewPassword({ ...newPassword, password: e.target.value })}
-                  className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                  placeholder="Enter password"
-                  required
-                />
-              </div>
-              <div className="flex justify-end space-x-3">
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  type="button"
-                  onClick={() => setShowAddPassword(false)}
-                  className="px-4 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
-                >
-                  Cancel
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  type="submit"
-                  className="px-4 py-2 rounded-lg text-white bg-blue-600 hover:bg-blue-700 transition-colors duration-200"
-                >
-                  Add Password
-                </motion.button>
-              </div>
-            </form>
-          </motion.div>
-        </div>
-      )}
-
-      {showMasterPassword && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 w-full max-w-md"
-          >
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Enter Master Password</h2>
-            <form onSubmit={(e) => { e.preventDefault(); handleMasterPasswordSubmit(); }} className="space-y-4">
-              <div>
-                <label htmlFor="masterPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Master Password
-                </label>
-                <input
-                  type="password"
-                  id="masterPassword"
-                  value={masterPassword}
-                  onChange={(e) => setMasterPassword(e.target.value)}
-                  className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                  placeholder="Enter your master password"
-                  required
-                />
-              </div>
-              <div className="flex justify-end space-x-3">
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  type="button"
-                  onClick={() => {
-                    setShowMasterPassword(false);
-                    setMasterPassword('');
-                  }}
-                  className="px-4 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
-                >
-                  Cancel
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  type="submit"
-                  className="px-4 py-2 rounded-lg text-white bg-blue-600 hover:bg-blue-700 transition-colors duration-200"
-                >
-                  Submit
-                </motion.button>
-              </div>
-            </form>
-          </motion.div>
-        </div>
-      )}
-
-      {showDeleteConfirmation && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 w-full max-w-md"
-          >
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Delete Account</h2>
-            <p className="text-gray-600 dark:text-gray-300 mb-4">
-              Are you sure you want to delete your account? This action cannot be undone.
-            </p>
-            <div className="flex justify-end space-x-3">
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setShowDeleteConfirmation(false)}
-                className="px-4 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
-              >
-                Cancel
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={handleDeleteAccount}
-                className="px-4 py-2 rounded-lg text-white bg-red-600 hover:bg-red-700 transition-colors duration-200"
-              >
-                Delete Account
-              </motion.button>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className={`w-full max-w-md border-2 shadow-2xl ${
+            theme === 'dark' 
+              ? 'bg-gray-900 border-gray-700 shadow-gray-900/50' 
+              : 'bg-white border-gray-200 shadow-gray-900/20'
+          }`}>
+            <div className="p-6">
+              <h2 className="text-2xl font-bold mb-4">Add New Password</h2>
+              <form onSubmit={handleAddPassword} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Master Password</label>
+                  <input
+                    type="password"
+                    value={masterPassword}
+                    onChange={(e) => setMasterPassword(e.target.value)}
+                    className={`w-full px-3 py-2 rounded-md border-2 ${
+                      theme === 'dark'
+                        ? 'bg-gray-800 border-gray-700 focus:border-blue-500'
+                        : 'bg-gray-50 border-gray-200 focus:border-blue-500'
+                    } focus:outline-none focus:ring-2 focus:ring-blue-500/20`}
+                    placeholder="Enter your master password"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Site Name</label>
+                  <input
+                    type="text"
+                    value={newPassword.site}
+                    onChange={(e) => setNewPassword({ ...newPassword, site: e.target.value })}
+                    className={`w-full px-3 py-2 rounded-md border-2 ${
+                      theme === 'dark'
+                        ? 'bg-gray-800 border-gray-700 focus:border-blue-500'
+                        : 'bg-gray-50 border-gray-200 focus:border-blue-500'
+                    } focus:outline-none focus:ring-2 focus:ring-blue-500/20`}
+                    placeholder="e.g., Gmail"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Username (Optional)</label>
+                  <input
+                    type="text"
+                    value={newPassword.username}
+                    onChange={(e) => setNewPassword({ ...newPassword, username: e.target.value })}
+                    className={`w-full px-3 py-2 rounded-md border-2 ${
+                      theme === 'dark'
+                        ? 'bg-gray-800 border-gray-700 focus:border-blue-500'
+                        : 'bg-gray-50 border-gray-200 focus:border-blue-500'
+                    } focus:outline-none focus:ring-2 focus:ring-blue-500/20`}
+                    placeholder="Enter username"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Password</label>
+                  <input
+                    type="password"
+                    value={newPassword.password}
+                    onChange={(e) => setNewPassword({ ...newPassword, password: e.target.value })}
+                    className={`w-full px-3 py-2 rounded-md border-2 ${
+                      theme === 'dark'
+                        ? 'bg-gray-800 border-gray-700 focus:border-blue-500'
+                        : 'bg-gray-50 border-gray-200 focus:border-blue-500'
+                    } focus:outline-none focus:ring-2 focus:ring-blue-500/20`}
+                    placeholder="Enter password"
+                    required
+                  />
+                </div>
+                <div className="flex justify-end space-x-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowAddPassword(false)}
+                    className={`px-4 py-2 rounded-md border-2 ${
+                      theme === 'dark'
+                        ? 'border-gray-700 hover:bg-gray-800'
+                        : 'border-gray-200 hover:bg-gray-50'
+                    } transition-colors`}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className={`px-4 py-2 rounded-md text-white ${
+                      theme === 'dark' 
+                        ? 'bg-blue-600 hover:bg-blue-700' 
+                        : 'bg-black hover:bg-gray-800'
+                    } transition-colors`}
+                  >
+                    Add Password
+                  </button>
+                </div>
+              </form>
             </div>
-          </motion.div>
+          </div>
         </div>
       )}
     </div>

@@ -1,80 +1,110 @@
 "use client";
 
-import { useEffect, useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { useRouter } from 'next/navigation';
+import { useTheme } from "../providers";
+import { FiShield, FiLock, FiKey, FiBell, FiCheckCircle, FiAlertCircle, FiSun, FiMoon } from "react-icons/fi";
+import Link from "next/link";
 
 export default function HowItsSafe() {
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
-  const router = useRouter();
+  const { theme, toggleTheme } = useTheme();
 
-  useEffect(() => {
-    // Get theme from localStorage
-    const savedTheme = localStorage.getItem('theme') as 'dark' | 'light';
-    if (savedTheme) {
-      setTheme(savedTheme);
+  const securityFeatures = [
+    {
+      icon: <FiShield className="h-6 w-6 text-primary" />,
+      title: "End-to-End Encryption",
+      description: "Your passwords are encrypted on your device before being stored, ensuring only you can access them."
+    },
+    {
+      icon: <FiLock className="h-6 w-6 text-primary" />,
+      title: "Master Password Protection",
+      description: "A single master password protects all your stored passwords, adding an extra layer of security."
+    },
+    {
+      icon: <FiKey className="h-6 w-6 text-primary" />,
+      title: "Zero-Knowledge Architecture",
+      description: "We never store your master password or encryption keys on our servers."
+    },
+    {
+      icon: <FiBell className="h-6 w-6 text-primary" />,
+      title: "Security Alerts",
+      description: "Get notified immediately if we detect any suspicious activity or potential security breaches."
+    },
+    {
+      icon: <FiCheckCircle className="h-6 w-6 text-primary" />,
+      title: "Regular Security Audits",
+      description: "Our security measures are regularly tested and audited by independent security experts."
+    },
+    {
+      icon: <FiAlertCircle className="h-6 w-6 text-primary" />,
+      title: "Breach Monitoring",
+      description: "We continuously monitor for data breaches and will alert you if any of your accounts are compromised."
     }
-  }, []);
+  ];
 
   return (
-    <div className={`min-h-screen ${theme === 'dark' ? 'bg-[#212121] text-[#BDBDBD]' : 'bg-white text-gray-900'}`}>
-      <div className="container mx-auto px-4 py-8">
-        <Button 
-          variant="ghost" 
-          onClick={() => router.push('/dashboard')}
-          className="mb-8"
-        >
-          Back to Dashboard
-        </Button>
-
-        <h1 className="text-4xl font-bold mb-8">How Your Data is Protected</h1>
-
-        <div className="space-y-8">
-          <section className={`p-6 rounded-lg ${theme === 'dark' ? 'bg-[#303030]' : 'bg-gray-50'}`}>
-            <h2 className="text-2xl font-semibold mb-4">End-to-End Encryption</h2>
-            <p className="mb-4">
-              Your passwords are encrypted using AES-256 encryption, one of the most secure encryption algorithms available.
-              The encryption key is derived from your master password using PBKDF2, making it computationally expensive to crack.
-            </p>
-            <p>
-              Even if someone gains access to our database, they cannot read your passwords without your master password.
-            </p>
-          </section>
-
-          <section className={`p-6 rounded-lg ${theme === 'dark' ? 'bg-[#303030]' : 'bg-gray-50'}`}>
-            <h2 className="text-2xl font-semibold mb-4">Master Password Protection</h2>
-            <p className="mb-4">
-              Your master password is never stored in plain text. It is hashed using bcrypt, a secure hashing algorithm
-              that includes salt and multiple iterations to prevent rainbow table attacks.
-            </p>
-            <p>
-              We cannot recover your master password if you forget it, ensuring that only you have access to your data.
-            </p>
-          </section>
-
-          <section className={`p-6 rounded-lg ${theme === 'dark' ? 'bg-[#303030]' : 'bg-gray-50'}`}>
-            <h2 className="text-2xl font-semibold mb-4">Secure Session Management</h2>
-            <p className="mb-4">
-              Your session is protected using JWT (JSON Web Tokens) with a secure secret key.
-              Tokens are stored in HTTP-only cookies to prevent XSS attacks.
-            </p>
-            <p>
-              You can log out at any time to invalidate your session token.
-            </p>
-          </section>
-
-          <section className={`p-6 rounded-lg ${theme === 'dark' ? 'bg-[#303030]' : 'bg-gray-50'}`}>
-            <h2 className="text-2xl font-semibold mb-4">Password Viewing Security</h2>
-            <p className="mb-4">
-              When you view a password, it is only shown for 40 seconds before being hidden again.
-              This prevents unauthorized access if you step away from your computer.
-            </p>
-            <p>
-              You'll also receive an email notification whenever a password is viewed, helping you track any suspicious activity.
-            </p>
-          </section>
+    <div className="min-h-screen gradient-bg">
+      {/* Navigation Bar */}
+      <nav className="glass-effect sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center">
+              <FiShield className="h-8 w-8 text-primary" />
+              <span className="ml-2 text-xl font-bold">SecurePass</span>
+            </div>
+            <div className="flex items-center space-x-4">
+              <Link 
+                href="/dashboard" 
+                className="text-sm font-medium hover:text-primary transition-colors"
+              >
+                Dashboard
+              </Link>
+              <button
+                onClick={toggleTheme}
+                className="p-2 rounded-lg hover:bg-accent transition-colors"
+                aria-label="Toggle theme"
+              >
+                {theme === 'dark' ? (
+                  <FiSun className="h-5 w-5" />
+                ) : (
+                  <FiMoon className="h-5 w-5" />
+                )}
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
+      </nav>
+
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="text-center mb-12">
+          <h1 className="text-4xl font-bold mb-4">How We Keep Your Data Safe</h1>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            Your security is our top priority. We use industry-leading encryption and security practices
+            to ensure your passwords remain protected at all times.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {securityFeatures.map((feature, index) => (
+            <div key={index} className="glass-effect rounded-xl p-6 card-hover">
+              <div className="flex items-center space-x-4 mb-4">
+                {feature.icon}
+                <h3 className="text-xl font-semibold">{feature.title}</h3>
+              </div>
+              <p className="text-muted-foreground">{feature.description}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-16 text-center">
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center px-6 py-3 rounded-lg bg-primary text-primary-foreground button-hover"
+          >
+            <FiShield className="h-5 w-5 mr-2" />
+            Back to Dashboard
+          </Link>
+        </div>
+      </main>
     </div>
   );
 } 
